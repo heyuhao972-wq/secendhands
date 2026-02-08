@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>二手书交易</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <h1> 二！手！书！交！易！！！</h1>
+
+  <!-- 身份管理 -->
+  <section>
+    <h3> 身份管理</h3>
+    <button id="btn-show-fingerprint">身份指纹</button>
+    <button id="btn-export-identity">导出身份</button>
+    <button id="btn-import-identity">导入身份</button>
+    <button id="btn-generate-identity">生成新身份</button>
+    <button id="btn-export-blocks">导出区块</button>
+  </section>
+
+  <hr />
+
+  <!-- 交易列表 -->
+<section id="trade-section">
+  <h3>📦 交易列表</h3>
+
+  <ul id="trade-list" class="trade-list">
+    
+  </ul>
+
+  <p id="trade-empty" style="display: none; color: #888;">
+    暂无交易
+  </p>
+</section>
+
+<hr />
+
+<button onclick="location.href='publish.html'">➕ 发布交易</button>
+
+  <!-- 模块加载 -->
+    <script type="module">
+    import * as trade from "./js/trade.js";
+    import * as keymgr from "./js/keymgr.js";
+
+    window.trade = trade;
+    window.keymgr = keymgr;
+
+    // 初始化交易列表
+    document.addEventListener('DOMContentLoaded', async () => {
+      await trade.initIndexPage();
+      
+      document.getElementById('btn-show-fingerprint').addEventListener('click', () => {
+        keymgr.showCurrentFingerprint();
+      });
+      
+      document.getElementById('btn-export-identity').addEventListener('click', () => {
+        keymgr.exportIdentity();
+      });
+      
+      document.getElementById('btn-import-identity').addEventListener('click', () => {
+        keymgr.importIdentityFromPrompt();
+      });
+      
+      document.getElementById('btn-generate-identity').addEventListener('click', () => {
+        keymgr.generateNewIdentity();
+      });
+
+      document.getElementById('btn-export-blocks').addEventListener('click', () => {
+        trade.exportBlocksToFile();
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>交易详情</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <h1>📘 交易详情</h1>
+
+  <!-- 交易信息 -->
+  <section>
+    <div id="trade-info">加载中…</div>
+  </section>
+
+  <hr />
+
+  <!-- 聊天区 -->
+<section>
+  <h3>💬 聊天</h3>
+
+  <div class="chat-layout">
+
+    <!-- 左侧：会话列表 -->
+    <div id="chat-sessions" class="chat-sessions">
+      <!-- JS 动态插入 -->
+    </div>
+
+    <!-- 右侧：当前聊天 -->
+    <div class="chat-window">
+      <div
+        id="chat-messages"
+        style="border:1px solid #ccc; height:200px; overflow:auto; padding:5px;"
+      ></div>
+
+      <div class="chat-input-bar">
+        <input
+          id="chat-input"
+          placeholder="输入消息"
+          style="width:80%;"
+        />
+        <button id="send-btn">发送</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+  <hr />
+
+  <!-- 操作按钮 -->
+  <section>
+    <button onclick="trade.confirmCompleteTrade()">
+      ✅ 确认完成
+    </button>
+
+    <button onclick="trade.cancelCurrentTrade()">
+      ❌ 取消交易
+    </button>
+  </section>
+
+  <br />
+  <button onclick="location.href='index.html'">⬅ 返回首页</button>
+
+  <!-- 模块加载 -->
+  <script type="module">
+    import * as trade from "./js/trade.js";
+    import * as chat from "./js/chat.js";
+
+    window.trade = trade;
+    window.chat = chat;
+    
+    // 直接调用初始化函数，确保在模块加载完成后执行
+    trade.initTradePage();
+  </script>
+
+</body>
+</html>
