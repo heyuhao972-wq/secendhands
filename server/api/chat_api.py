@@ -145,7 +145,7 @@ async def get_chat_history(trade_id: str, limit: int = 100):
         result = []
         for msg in messages:
             result.append({
-                "id": msg["id"],
+                "id": msg.get("id"),
                 "trade_id": msg["trade_id"],
                 "ciphertext": msg["ciphertext"],
                 "timestamp": msg["timestamp"],
