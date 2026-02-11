@@ -131,6 +131,10 @@ export async function initChat(tradeId, uiCallbacks = {}) {
     console.log("[chat] 建立初始聊天会话");
     await establishInitialSession(tradeChatInfo);
     
+    // 8. 加载历史消息
+    console.log("[chat] 加载聊天历史消息");
+    await loadChatHistory();
+
     // 6. 打开WebSocket连接
     console.log("[chat] 打开WebSocket连接");
     socket = await openChatSocket(
@@ -144,9 +148,7 @@ export async function initChat(tradeId, uiCallbacks = {}) {
     console.log("[chat] 发送JOIN消息通知对方");
     sendJoinMessage(myChatPubKeyStr);
     
-    // 8. 加载历史消息
-    console.log("[chat] 加载聊天历史消息");
-    await loadChatHistory();
+    
     
     console.log("[chat] 聊天系统初始化完成");
     return { success: true, sessions: Array.from(sessions.keys()) };
@@ -319,6 +321,11 @@ async function loadChatHistory() {
     }
     
     console.log("[chat] 历史消息加载完成");
+    //通知 UI 刷新当前会话
+    if (currentSessionPeer && onSwitchSession) {
+      onSwitchSession(currentSessionPeer);
+      console.log("[chat] 通知 UI 刷新当前会话");
+    }
   } catch (error) {
     console.warn("[chat] 加载历史消息失败:", error);
   }
@@ -459,7 +466,10 @@ async function handleChatMessage(msg) {
     }
   } catch (error) {
     // 解密失败处理
-    console.debug("[chat] 消息处理失败:", error.message);
+    console.warn(
+    "[chat] 解密失败，可能 session 尚未准备好，sender:",
+    sender_chat_pubkey
+  );
   }
 }
 

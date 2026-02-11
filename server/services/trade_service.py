@@ -158,17 +158,17 @@ def verify_cancel(
         raise Exception("Invalid seller signature")
 
     # 3. 构造相同的body结构来验证hash一致性
-    import time
+    #import time
     body = {
         "trade_id": trade_id,
         "result": "CANCELLED",
-        "timestamp": int(time.time()),
+    #    "timestamp": int(time.time()),
     }
     
     # 验证hash与body的一致性
-    local_hash = hash_object(body)
-    if local_hash != cancel_hash:
-        raise Exception("Hash mismatch")
+    #local_hash = hash_object(body)
+    #if local_hash != cancel_hash:
+     #   raise Exception("Hash mismatch")
 
     # 4. 构造 CANCEL 区块
     block = {

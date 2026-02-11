@@ -445,11 +445,7 @@ function handleSwitchSession(peerChatPubKey) {
     }
   });
   
-  // 清空当前消息列表，等待新消息
-  const messagesContainer = document.getElementById("chat-messages");
-  if (messagesContainer) {
-    messagesContainer.innerHTML = "";
-  }
+  renderChatMessages(peerChatPubKey);
 }
 
 // 处理新消息
