@@ -52,15 +52,16 @@
   <hr />
 
   <!-- 操作按钮 -->
-  <section>
-    <button onclick="trade.confirmCompleteTrade()">
-      ✅ 确认完成
-    </button>
+<section>
+  <button id="completeBtn" onclick="trade.confirmCompleteTrade()">
+    ✅ 确认完成
+  </button>
 
-    <button onclick="trade.cancelCurrentTrade()">
-      ❌ 取消交易
-    </button>
-  </section>
+  <button id="cancelBtn" onclick="trade.cancelCurrentTrade()">
+    ❌ 取消交易
+  </button>
+</section>
+
 
   <br />
   <button onclick="location.href='index.html'">⬅ 返回首页</button>

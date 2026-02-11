@@ -258,20 +258,26 @@ async function loadChatHistory() {
     // 从服务器获取历史消息
     const history = await getChatHistory(currentTradeId);
     console.log("[chat] 获取到历史消息数量:", history.length);
-    
+
     for (const msg of history) {
       const senderPubKey = msg.sender_pubkey;
       const buyerChatPubKey = msg.buyer_chat_pubkey;
-      
+
+      console.debug("[chat] 当前消息发送者:", senderPubKey);
+      // 1. 确保买家发送的消息被加载
+      if (!isSeller && senderPubKey === myChatPubKeyStr) {
+        console.debug("[chat] 加载买家自己的消息");
+      }
+
       // 权限检查：买家只接受卖家的消息
       if (!isSeller && sellerChatPubKey && senderPubKey && senderPubKey !== sellerChatPubKey) {
         console.debug("[chat] 忽略非卖家消息");
         continue;
       }
-      
+
       // 查找或创建会话
       let session = null;
-      
+
       // 情况1：消息来自对方
       if (senderPubKey && senderPubKey !== myChatPubKeyStr) {
         session = sessions.get(senderPubKey);
@@ -286,11 +292,11 @@ async function loadChatHistory() {
           session = await createSession(buyerChatPubKey, false);
         }
       }
-      
+
       // 解密消息
       const ciphertext = JSON.parse(msg.ciphertext);
       let decrypted = null;
-      
+
       if (session) {
         try {
           decrypted = await decrypt(session.chatKey, ciphertext);
@@ -309,7 +315,7 @@ async function loadChatHistory() {
           }
         }
       }
-      
+
       // 保存解密后的消息
       if (decrypted && session) {
         session.messages.push({
@@ -317,9 +323,14 @@ async function loadChatHistory() {
           timestamp: new Date(msg.timestamp * 1000),
           isOwn: senderPubKey === myChatPubKeyStr
         });
+
+        // 如果是买家的消息，确保显示在 UI
+        if (senderPubKey === myChatPubKeyStr) {
+          console.debug("[chat] 买家的消息已经加载");
+        }
       }
     }
-    
+
     console.log("[chat] 历史消息加载完成");
     //通知 UI 刷新当前会话
     if (currentSessionPeer && onSwitchSession) {
@@ -327,9 +338,10 @@ async function loadChatHistory() {
       console.log("[chat] 通知 UI 刷新当前会话");
     }
   } catch (error) {
-    console.warn("[chat] 加载历史消息失败:", error);
+    console.error("[chat] 加载历史消息失败:", error);
   }
 }
+
 
 
 

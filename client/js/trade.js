@@ -344,6 +344,11 @@ export async function initTradePage() {
   document.getElementById("trade-info").textContent =
     `交易ID: ${trade.trade_id}\n状态: ${trade.status}`;
 
+    //交易结束提示 
+  if (trade.status === "COMPLETED" || trade.status === "CANCELLED") {
+    showTradeEndedNotice(trade.status);
+  }
+
   // 初始化聊天系统，设置UI回调
   console.log("[trade] 初始化聊天系统");
   await chat.initChat(tradeId, {
@@ -891,4 +896,47 @@ export async function exportBlocksToFile() {
     console.error("[trade] 导出区块链失败:", error);
     alert("导出区块链失败: " + error.message);
   }
+}
+//交易完成用户提示
+function showTradeEndedNotice(status) {
+  const notice = document.createElement("div");
+
+  notice.style.backgroundColor = "#fff3cd";
+  notice.style.color = "#856404";
+  notice.style.padding = "12px";
+  notice.style.marginBottom = "15px";
+  notice.style.border = "1px solid #ffeeba";
+  notice.style.borderRadius = "6px";
+  notice.style.fontWeight = "bold";
+
+  notice.textContent =
+    status === "COMPLETED"
+      ? "✅ 交易已完成，记录已上链，所有更改将不被记录"
+      : "❌ 交易已取消，所有更改将不被记录";
+
+  const tradeInfo = document.getElementById("trade-info");
+  tradeInfo.parentNode.insertBefore(notice, tradeInfo);
+
+  // 禁用输入框和发送按钮
+  const input = document.getElementById("chat-input");
+  const sendBtn = document.getElementById("send-button");
+  const completeBtn = document.getElementById("completeBtn"); // 使用 id 来获取按钮
+  const cancelBtn = document.getElementById("cancelBtn"); // 使用 id 来获取按钮
+
+  if (input) input.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+
+  if (completeBtn) {
+    completeBtn.disabled = true;
+    completeBtn.style.opacity = "0.6";  // 可选：让按钮显示禁用状态
+    completeBtn.style.cursor = "not-allowed";
+  }
+
+  if (cancelBtn) {
+    cancelBtn.disabled = true;
+    cancelBtn.style.opacity = "0.6";  // 可选：让按钮显示禁用状态
+    cancelBtn.style.cursor = "not-allowed";
+  }
+
+  console.log("[trade] 已禁用取消和确认完成按钮（交易已结束）");
 }
