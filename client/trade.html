@@ -4,6 +4,54 @@
   <meta charset="UTF-8" />
   <title>交易详情</title>
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .chat-message {
+      max-width: 75%;
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #d9d9d9;
+      color: #222;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .own-message {
+      margin-left: auto;
+      background: #1677ff;
+      border-color: #1677ff;
+      color: #fff;
+    }
+
+    .other-message {
+      margin-right: auto;
+      background: #fff;
+      border-color: #d9d9d9;
+      color: #222;
+    }
+
+    .message-time {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.75;
+    }
+
+    .session-item.unread {
+      font-weight: 700;
+    }
+
+    .unread-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: #ff4d4f;
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+  </style>
 </head>
 <body>
 

@@ -43,6 +43,7 @@ export async function publishTrade(tradeContent) {
   console.log("[trade] 开始发布交易");
   
   // 加载用户身份密钥对
+  console.log("[trade] 加载用户身份密钥对");
   const { publicKey, privateKey } = await loadIdentityKeyPair();
   const timestamp = Math.floor(Date.now() / 1000);
 
@@ -116,20 +117,20 @@ export async function submitComplete(tradeId, sigA, sigB) {
   console.log("[trade] 开始提交交易完成请求，交易ID:", tradeId);
   
   // 验证本地哈希与签名哈希是否一致
-  console.log("[trade] 验证本地哈希一致性");
+  console.log("[trade] 验证本地哈希一致");
   const localHash = await hash(sigA.body);
   if (localHash !== sigA.hash) {
     throw new Error("本地计算的哈希与签名的哈希不一致");
   }
 
   // 验证双方签名的哈希是否一致
-  console.log("[trade] 验证双方哈希一致性");
+  console.log("[trade] 验证双方哈希一致");
   if (sigA.hash !== sigB.hash) {
     throw new Error("双方签名的哈希不一致");
   }
 
   // 验证双方签名的有效性
-  console.log("[trade] 验证双方签名有效性");
+  console.log("[trade] 验证双方签名有效");
   if (
     !(await verify(sigA.hash, sigA.signature, sigA.pubkey)) ||
     !(await verify(sigB.hash, sigB.signature, sigB.pubkey))
@@ -161,7 +162,7 @@ export async function cancelTrade(tradeId) {
     timestamp: Math.floor(Date.now() / 1000),
   };
 
-  // 计算交易取消数据的哈希值
+  // 计算交易取消数据的哈希
   console.log("[trade] 计算交易取消数据哈希");
   const cancelHash = await hash(body);
   
@@ -169,7 +170,7 @@ export async function cancelTrade(tradeId) {
   console.log("[trade] 对交易取消哈希进行签名");
   const signature = await sign(cancelHash, privateKey);
 
-  // 发送交易取消请求到服务器
+  // 发送交易取消请求到服务端
   console.log("[trade] 发送交易取消请求");
   await apiCancelTrade({
     trade_id: tradeId,
@@ -180,53 +181,6 @@ export async function cancelTrade(tradeId) {
   console.log("[trade] 交易取消请求发送成功");
 }
 
-/* 
- * 二、index.html（交易列表）
-  */
-
-
-
-//以下是初版（稳定版）          不是说这版不稳定，这版也没有bug!!!
-/*
-export async function initIndexPage() {
-  const list = document.getElementById("trade-list");
-  list.innerHTML = "";
-
-  const trades = await fetchTradeList();
-  for (const t of trades) {
-    const div = document.createElement("div");
-    div.className = "trade-item";
-    //div.textContent = `${t.content.description} ｜ ${t.status}`;
-    //以下是修改的
-    const metaMap = loadTradeMeta();
-
-  for (const t of trades) {
-    const div = document.createElement("div");
-    div.className = "trade-item";
-
-    const meta = metaMap[t.content_hash];
-
-    const title = meta?.description ?? t.content_hash.slice(0, 12) + "…";
-    const price = meta?.price ? `￥${meta.price}` : "";
-
-    div.textContent = `${title} ${price} ｜ ${t.status}`;
-
-    div.onclick = () => {
-      location.href = `trade.html?trade_id=${t.trade_id}`;
-    };
-
-    list.appendChild(div);
-  }
-
-
-
-    div.onclick = () => {
-      location.href = `trade.html?trade_id=${t.trade_id}`;
-    };
-    list.appendChild(div);
-  }
-}
-*/
 
 
 
@@ -281,7 +235,7 @@ export async function initIndexPage() {
     const price = t.price ?? meta?.price ?? "";
 
 
-    li.textContent = `${title} ${price} ｜ ${t.status}`;
+    li.textContent = `${title} ${price} 状态:${t.status}`;
 
     li.onclick = () => {
       location.href = `trade.html?trade_id=${t.trade_id}`;
@@ -309,7 +263,7 @@ export async function publishTradeFromForm() {
 }
 
 /* 
- * 四、trade.html（交易详情 + 聊天）
+ * 四、trade.html（交易详情+ 聊天)
    */
 
 
@@ -367,7 +321,7 @@ export async function initTradePage() {
     if (trade.buyer_pubkey) {
       console.log("[trade] 卖家聊天已初始化，买家已加入");
     } else {
-      document.getElementById("trade-info").textContent += "\n等待买家加入…";
+      document.getElementById("trade-info").textContent += "\n等待买家加入";
       console.log("[trade] 聊天已初始化（等待买家）");
     }
   }
@@ -393,7 +347,34 @@ export async function initTradePage() {
   console.log("[trade] 交易页面初始化完成");
 }
 
-// 处理新会话创建
+// 处理新会话创建时，标记为未读
+function markSessionUnread(peerChatPubKey) {
+  const selector = `.session-item[data-chat-pubkey="${peerChatPubKey}"]`;
+  const item = document.querySelector(selector);
+  if (!item) return;
+
+  if (!item.classList.contains("unread")) {
+    item.classList.add("unread");
+  }
+
+  let badge = item.querySelector(".unread-badge");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "unread-badge";
+    badge.textContent = "未读";
+    item.appendChild(badge);
+  }
+}
+
+function clearSessionUnread(peerChatPubKey) {
+  const selector = `.session-item[data-chat-pubkey="${peerChatPubKey}"]`;
+  const item = document.querySelector(selector);
+  if (!item) return;
+  item.classList.remove("unread");
+  const badge = item.querySelector(".unread-badge");
+  if (badge) badge.remove();
+}
+
 function handleNewSession(sessionInfo) {
   const sessionsList = document.getElementById("chat-sessions");
   if (!sessionsList) {
@@ -411,6 +392,7 @@ function handleNewSession(sessionInfo) {
     : String(peerChatPubKey);
     
   sessionItem.textContent = displayText;
+  sessionItem.dataset.chatPubkey = peerChatPubKey;
   sessionItem.onclick = () => {
     // 切换到该会话
     chat.switchSession(peerChatPubKey);
@@ -422,6 +404,7 @@ function handleNewSession(sessionInfo) {
     
     // 为当前选中的会话添加active类
     sessionItem.classList.add("active");
+    clearSessionUnread(peerChatPubKey);
   };
   
   // 如果是第一个会话，自动切换到它
@@ -437,18 +420,19 @@ function handleNewSession(sessionInfo) {
 function handleSwitchSession(peerChatPubKey) {
   console.log("[trade] 切换到会话:", peerChatPubKey);
   
-  // 更新会话列表的active状态
+  // 更新会话列表的active类
   document.querySelectorAll(".session-item").forEach(item => {
     item.classList.remove("active");
   });
   
   // 找到对应的会话项并添加active类
-  const sessionItems = document.querySelectorAll(".session-item");
-  sessionItems.forEach(item => {
-    if (item.textContent.includes(peerChatPubKey.slice(0, 12))) {
-      item.classList.add("active");
-    }
-  });
+  const currentItem = document.querySelector(
+    `.session-item[data-chat-pubkey="${peerChatPubKey}"]`
+  );
+  if (currentItem) {
+    currentItem.classList.add("active");
+  }
+  clearSessionUnread(peerChatPubKey);
   
   renderChatMessages(peerChatPubKey);
 }
@@ -476,19 +460,7 @@ async function handleNewMessage(payload) {
     renderChatMessages(peerChatPubKey);
   } else {
     // 非当前会话收到新消息，标记为未读
-    const sessionItems = document.querySelectorAll(".session-item");
-    sessionItems.forEach(item => {
-      if (item.textContent.includes(peerChatPubKey.slice(0, 12))) {
-        if (!item.classList.contains("unread")) {
-          item.classList.add("unread");
-          // 添加未读徽章
-          const unreadBadge = document.createElement("span");
-          unreadBadge.className = "unread-badge";
-          unreadBadge.textContent = "未读";
-          item.appendChild(unreadBadge);
-        }
-      }
-    });
+    markSessionUnread(peerChatPubKey);
   }
 }
 
@@ -548,7 +520,7 @@ function bindChatSend() {
     }
   };
   
-  // 支持回车键发送
+  // 支持回车键发送消息
   chatInput.addEventListener("keypress", async (e) => {
     if (e.key === "Enter") {
       const message = chatInput.value.trim();
@@ -561,70 +533,11 @@ function bindChatSend() {
 }
 
 
-/*
-export async function initTradePage() {
-  try {
-    const tradeId = new URLSearchParams(location.search).get("trade_id");
-    if (!tradeId) {
-      document.getElementById("trade-info").textContent = "错误：缺少交易ID";
-      return;
-    }
-
-    const trade = await getTrade(tradeId);
-    
-    // 显示交易信息
-    // 注意：后端只存储 content_hash，不存储原始内容
-    // 这里显示基本信息，如果需要显示详细内容，需要从 localStorage 或 URL 参数获取
-    const tradeInfo = `交易ID: ${trade.trade_id}\n状态: ${trade.status}\n卖家: ${trade.seller_pubkey.substring(0, 16)}...`;
-    document.getElementById("trade-info").textContent = tradeInfo;
-
-    const { publicKey } = await loadIdentityKeyPair();
-    
-    // 确定对方公钥（用于聊天密钥派生）
-    // 如果是卖家，等待买家；如果是买家，使用卖家公钥
-    let peerPub = null;
-    if (trade.seller_pubkey === publicKey) {
-      // 当前用户是卖家
-      peerPub = trade.buyer_pubkey;
-/*
-      if (!peerPub) {
-        // 还没有买家，显示提示信息
-        document.getElementById("trade-info").textContent += "\n\n等待买家加入...";
-        // 即使没有买家，也初始化聊天（卖家可以先发送消息）
-        // 但需要等待买家加入后才能建立聊天密钥
-        console.log("[trade] 卖家等待买家加入");
-        return;
-      }
-
-    if (!peerPub) {
-      document.getElementById("trade-info").textContent += "\n\n等待买家加入...";
-      console.log("[trade] 卖家等待买家加入");
-    // 注意：不 return，继续初始化聊天状态
-      }
-
-
-
-    } else {
-      // 当前用户是买家
-      peerPub = trade.seller_pubkey;
-    }
-
-    // 初始化聊天
-    if (peerPub) {
-      console.log("正在调用ini");
-      await chat.initChat(tradeId, peerPub, appendChatMessage);
-      console.log("[trade] 聊天已初始化");
-    } else {
-      console.warn("[trade] 无法确定对方公钥，聊天未初始化");
-    }
-  } catch (error) {
-    console.error("[trade] 初始化失败:", error);
-    document.getElementById("trade-info").textContent = `错误: ${error.message}`;
-  }
-}*/
-
-
-
+/**
+ * 尝试处理交易完成请求
+ * @param {string|Object} messageText - 消息文本或对象
+ * @returns {Promise<boolean>} 是否处理成功
+ */
 async function tryHandleTradeCompleteRequest(messageText) {
   let payload = null;
 
@@ -661,9 +574,9 @@ async function tryHandleTradeCompleteRequest(messageText) {
     return true;
   }
 
-  //  只缓存，不提交
+  // 只缓存，不提示
   window.__pendingPeerSig = peerSig;
-  alert("对方已请求完成交易，请你点击“确认完成”以继续。");
+  alert("对方已请求完成交易，请你点击\"确认完成\"以继续交易");
   return true;
 }
 
@@ -697,7 +610,7 @@ export async function buyerInitiateCompleteTrade() {
     const mySignature = await signComplete(tradeId);
     
     // 2. 将交易信息和签名分享给卖家
-    // 实际实现中，应该通过加密聊天系统发送
+    // 实际实现中，应该通过加密聊天系统发送给卖家
     const tradeInfo = {
       body: mySignature.body,
       hash: mySignature.hash,
@@ -769,6 +682,10 @@ export async function signCompleteWithBody(body) {
 export async function submitBothSignatures(tradeId, buyerSig, sellerSig) {
   try {
     // 验证双方签名和hash的一致性
+    await verifyPeerSignature(buyerSig.body, buyerSig.hash, buyerSig.signature, buyerSig.pubkey);
+    await verifyPeerSignature(sellerSig.body, sellerSig.hash, sellerSig.signature, sellerSig.pubkey);
+    
+    // 提交完成交易
     await submitComplete(tradeId,  sellerSig, buyerSig);
     
     alert("交易完成请求已提交，交易状态将更新为已完成");
@@ -787,16 +704,16 @@ export async function confirmCompleteTrade() {
       throw new Error("缺少交易ID");
     }
 
-    // 获取当前交易信息和身份
+    // 获取当前交易信息和身份信息
     const trade = await getTrade(tradeId);
     const identity = await loadIdentityKeyPair();
 
     if (!trade || !identity) {
-      alert("无法获取交易信息或身份信息");
+      alert("无法获取交易信息或身份信息，确认失败");
       return;
     }
 
-    // 检查聊天连接
+    // 检查聊天连接状态
     const currentSession = chat.getCurrentSession();
     if (!currentSession) {
       alert("请先选择聊天对象");
@@ -864,7 +781,7 @@ export async function cancelCurrentTrade() {
       throw new Error("缺少交易ID");
     }
     
-    if (!confirm("确定要取消此交易吗？此操作不可撤销。")) {
+    if (!confirm("确定要取消此交易吗？此操作不可撤销")) {
       return;
     }
     
@@ -911,8 +828,8 @@ function showTradeEndedNotice(status) {
 
   notice.textContent =
     status === "COMPLETED"
-      ? "✅ 交易已完成，记录已上链，所有更改将不被记录"
-      : "❌ 交易已取消，所有更改将不被记录";
+      ? "交易已完成，记录已上链，所有更改将不被记录"
+      : "交易已取消，所有更改将不被记录";
 
   const tradeInfo = document.getElementById("trade-info");
   tradeInfo.parentNode.insertBefore(notice, tradeInfo);
@@ -928,13 +845,13 @@ function showTradeEndedNotice(status) {
 
   if (completeBtn) {
     completeBtn.disabled = true;
-    completeBtn.style.opacity = "0.6";  // 可选：让按钮显示禁用状态
+    completeBtn.style.opacity = "0.6";  // 让按钮显示禁用状态
     completeBtn.style.cursor = "not-allowed";
   }
 
   if (cancelBtn) {
     cancelBtn.disabled = true;
-    cancelBtn.style.opacity = "0.6";  // 可选：让按钮显示禁用状态
+    cancelBtn.style.opacity = "0.6";  // 让按钮显示禁用状态
     cancelBtn.style.cursor = "not-allowed";
   }
 

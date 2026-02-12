@@ -35,7 +35,6 @@ def get_messages(trade_id: str, limit: int = 100):
     """
     new_sql = """
     SELECT 
-        id,
         trade_id,
         buyer_chat_pubkey,
         sender_pubkey,
@@ -48,7 +47,6 @@ def get_messages(trade_id: str, limit: int = 100):
     """
     old_sql = """
     SELECT 
-        id,
         trade_id,
         ciphertext,
         timestamp,
@@ -74,5 +72,7 @@ def get_messages(trade_id: str, limit: int = 100):
             row["sender_pubkey"] = row.get("sender_chat_pubkey")
         if "buyer_chat_pubkey" not in row:
             row["buyer_chat_pubkey"] = None
+        if "id" not in row:
+            row["id"] = None
         normalized.append(row)
     return normalized
