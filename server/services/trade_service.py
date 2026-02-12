@@ -1,4 +1,4 @@
-# backend/services/trade_service.py
+﻿# backend/services/trade_service.py
 
 """
 
@@ -14,12 +14,14 @@ from crypto.verify import verify_signature
 from crypto.hash import hash_object, canonical_json
 from services.blockchain import append_block
 
-from db.trades import ( 
-    get_trade,   
+from db.trades import (
+    get_trade,
     insert_trade,
     update_trade_status,
-    update_trade_chat_pubkey
+    update_trade_chat_pubkey,
+    update_trade_join,
 )
+
 from db.blocks import get_all_blocks
 
 # ============================================================
@@ -74,28 +76,28 @@ def verify_complete(
     complete_hash: str,
     seller_sig: str,
     buyer_sig: str,
+    buyer_pubkey: str = None,
 ):
     """
-    验证完成交易是否合法
-
-    complete_hash 由前端生成并传入
+    验证完成交易是否合法（双签）
+    支持前端显式传 buyer_pubkey，避免多买家并发时签名归属错位。
     """
-
     trade = get_trade(trade_id)
     if trade is None:
         raise Exception("Trade not found")
 
-    # 1. 状态机检查
     if trade["status"] != "OPEN":
         raise Exception("Trade is not open")
 
     seller_pubkey = trade["seller_pubkey"]
-    buyer_pubkey = trade.get("buyer_pubkey")
+    target_buyer_pubkey = buyer_pubkey or trade.get("buyer_pubkey")
 
-    if buyer_pubkey is None:
+    if not target_buyer_pubkey:
         raise Exception("Buyer pubkey not set")
 
-    # 2. 验卖家签名
+    if target_buyer_pubkey == seller_pubkey:
+        raise Exception("Invalid trade participants")
+
     if not verify_signature(
         pubkey=seller_pubkey,
         hash=complete_hash,
@@ -103,19 +105,22 @@ def verify_complete(
     ):
         raise Exception("Invalid seller signature")
 
-    # 3. 验买家签名
     if not verify_signature(
-        pubkey=buyer_pubkey,
+        pubkey=target_buyer_pubkey,
         hash=complete_hash,
         signature=buyer_sig,
     ):
         raise Exception("Invalid buyer signature")
 
-    # 4. ?? COMPLETE ??
     block = {
         "type": "COMPLETE",
         "trade_id": trade_id,
-        "payload": {"trade_id": trade_id, "result": "COMPLETED"},
+        "payload": {
+            "trade_id": trade_id,
+            "result": "COMPLETED",
+            "seller_pubkey": seller_pubkey,
+            "buyer_pubkey": target_buyer_pubkey,
+        },
         "hash": complete_hash,
         "signatures": {
             "seller": seller_sig,
@@ -124,6 +129,7 @@ def verify_complete(
     }
 
     return block
+
 
 
 # ============================================================
@@ -190,16 +196,15 @@ def verify_cancel(
 
 def apply_block(block: dict):
     """
-    写新区块，并同步更新 trades 状态表
+    写新区块，并同步更新 trades 状态快照表
     """
-
-    # 1. 追加区块（append-only）
+    # 1) 追加区块（append-only）
     append_block(block)
 
     block_type = block["type"]
     trade_id = block["trade_id"]
 
-    # 2. 更新状态快照表
+    # 2) 更新状态快照表
     if block_type == "CREATE":
         insert_trade({
             "trade_id": trade_id,
@@ -211,10 +216,12 @@ def apply_block(block: dict):
         })
 
     elif block_type == "COMPLETE":
-        update_trade_status(trade_id, "COMPLETED")
+        buyer_snapshot = block.get("payload", {}).get("buyer_pubkey")
+        update_trade_status(trade_id, "COMPLETED", buyer_pubkey=buyer_snapshot)
 
     elif block_type == "CANCEL":
         update_trade_status(trade_id, "CANCELLED")
+
 
 
 # ============================================================
@@ -294,8 +301,7 @@ def get_trade_chat_info(trade_id: str):
     trade = get_trade(trade_id)
     if trade is None:
         return None
-    
-    # 返回聊天相关信息
+
     return {
         "trade_id": trade["trade_id"],
         "seller_pubkey": trade["seller_pubkey"],
@@ -305,50 +311,71 @@ def get_trade_chat_info(trade_id: str):
         "status": trade["status"],
     }
 
+
 def update_chat_pubkey(trade_id: str, identity_pubkey: str, chat_pubkey: str):
     """
-    更新用户的聊天公钥
+    更新用户聊天公钥
+    目标：
+    1) 卖家可更新 seller_chat_pubkey
+    2) 当前买家可更新 buyer_chat_pubkey
+    3) 若 buyer_pubkey 为空，允许当前 identity 占位为买家并写入 chat pubkey
+    4) 非参与者不抛异常（避免前端初始化直接 500），返回 ignored
     """
     trade = get_trade(trade_id)
     if trade is None:
         raise Exception("Trade not found")
-    
-    # 检查用户是否为交易参与方
+
+    # 卖家更新
     if trade["seller_pubkey"] == identity_pubkey:
-        # 更新卖家聊天公钥
         update_trade_chat_pubkey(
             trade_id=trade_id,
             identity_pubkey=identity_pubkey,
             chat_pubkey=chat_pubkey,
-            is_seller=True
+            is_seller=True,
         )
-    elif trade.get("buyer_pubkey") == identity_pubkey:
-        # 更新买家聊天公钥
+        return {"success": True, "role": "seller"}
+
+    buyer_pubkey = trade.get("buyer_pubkey")
+
+    # 买家为空：当前用户占位成为买家，并写入 buyer_chat_pubkey
+    if not buyer_pubkey:
+        update_trade_join(
+            trade_id=trade_id,
+            buyer_pubkey=identity_pubkey,
+            buyer_chat_pubkey={"pubkey": chat_pubkey},
+        )
+        return {"success": True, "role": "buyer_joined"}
+
+    # 当前买家更新
+    if buyer_pubkey == identity_pubkey:
         update_trade_chat_pubkey(
             trade_id=trade_id,
             identity_pubkey=identity_pubkey,
             chat_pubkey=chat_pubkey,
-            is_seller=False
+            is_seller=False,
         )
-    else:
-        raise Exception("User is not a participant in this trade")
-    
-    return {"success": True}
+        return {"success": True, "role": "buyer"}
+
+    # 非参与者：不抛异常，避免聊天初始化被 500 打断
+    return {
+        "success": True,
+        "ignored": True,
+        "reason": "not_participant",
+    }
+
 
 def get_peer_chat_pubkey(trade_id: str, identity_pubkey: str):
     """
-    获取对方的聊天公钥
+    获取对方聊天公钥
     """
     trade = get_trade(trade_id)
     if trade is None:
         return None
-    
-    # 确定对方身份
+
     if trade["seller_pubkey"] == identity_pubkey:
-        # 自己是卖家，返回买家的聊天公钥
         return trade.get("buyer_chat_pubkey")
-    elif trade.get("buyer_pubkey") == identity_pubkey:
-        # 自己是买家，返回卖家的聊天公钥
+
+    if trade.get("buyer_pubkey") == identity_pubkey:
         return trade.get("seller_chat_pubkey")
-    else:
-        return None
+
+    return None

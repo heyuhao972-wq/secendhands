@@ -1,4 +1,4 @@
-/**
+﻿/**
 
  *  交易流程编排（create / complete / cancel）
  *  交易相关页面初始化（index / publish / trade）
@@ -34,6 +34,32 @@ import { saveTradeMeta } from "./trade_meta.js";
 let currentTradeId = null;
 let currentTrade = null;
 let currentIdentity = null;
+
+function getLatestPeerCompleteSigFromActiveSession() {
+  const session = chat.getCurrentSession?.();
+  if (!session || !Array.isArray(session.messages)) return null;
+
+  for (let i = session.messages.length - 1; i >= 0; i -= 1) {
+    const m = session.messages[i];
+    if (!m || m.isOwn) continue;
+
+    const text = m.content || m.message;
+    if (!text) continue;
+
+    let payload = null;
+    try {
+      payload = typeof text === "string" ? JSON.parse(text) : text;
+    } catch {
+      continue;
+    }
+
+    if (payload?.type === "TRADE_COMPLETE_REQUEST" && payload?.signature?.pubkey) {
+      return payload.signature;
+    }
+  }
+  return null;
+}
+
 
 /*=======================
  * 一、纯交易逻辑
@@ -113,42 +139,33 @@ export async function signComplete(tradeId) {
   };
 }
 
-export async function submitComplete(tradeId, sigA, sigB) {
-  console.log("[trade] 开始提交交易完成请求，交易ID:", tradeId);
-  
-  // 验证本地哈希与签名哈希是否一致
-  console.log("[trade] 验证本地哈希一致");
-  const localHash = await hash(sigA.body);
-  if (localHash !== sigA.hash) {
-    throw new Error("本地计算的哈希与签名的哈希不一致");
+export async function submitComplete(tradeId, sellerSig, buyerSig) {
+  const localHash = await hash(sellerSig.body);
+
+  if (localHash !== sellerSig.hash) {
+    throw new Error("本地计算哈希与卖家签名哈希不一致");
+  }
+  if (sellerSig.hash !== buyerSig.hash) {
+    throw new Error("买卖双方签名哈希不一致");
   }
 
-  // 验证双方签名的哈希是否一致
-  console.log("[trade] 验证双方哈希一致");
-  if (sigA.hash !== sigB.hash) {
-    throw new Error("双方签名的哈希不一致");
+  if (!(await verify(sellerSig.hash, sellerSig.signature, sellerSig.pubkey))) {
+    throw new Error("卖家签名无效");
+  }
+  if (!(await verify(buyerSig.hash, buyerSig.signature, buyerSig.pubkey))) {
+    throw new Error("买家签名无效");
   }
 
-  // 验证双方签名的有效性
-  console.log("[trade] 验证双方签名有效");
-  if (
-    !(await verify(sigA.hash, sigA.signature, sigA.pubkey)) ||
-    !(await verify(sigB.hash, sigB.signature, sigB.pubkey))
-  ) {
-    throw new Error("无效的签名");
-  }
-
-  // 提交交易完成请求到服务器
-  console.log("[trade] 提交交易完成请求到服务器");
   await completeTrade({
     trade_id: tradeId,
-    hash: sigA.hash,
-    sig_seller: sigA.signature,
-    sig_buyer: sigB.signature,
+    hash: sellerSig.hash,
+    sig_seller: sellerSig.signature,
+    sig_buyer: buyerSig.signature,
+    buyer_pubkey: buyerSig.pubkey,
   });
-  
-  console.log("[trade] 交易完成请求提交成功");
 }
+
+
 
 export async function cancelTrade(tradeId) {
   console.log("[trade] 开始取消交易，交易ID:", tradeId);
@@ -538,7 +555,7 @@ function bindChatSend() {
  * @param {string|Object} messageText - 消息文本或对象
  * @returns {Promise<boolean>} 是否处理成功
  */
-async function tryHandleTradeCompleteRequest(messageText) {
+export async function tryHandleTradeCompleteRequest(messageText) {
   let payload = null;
 
   if (messageText && typeof messageText === "object") {
@@ -546,13 +563,12 @@ async function tryHandleTradeCompleteRequest(messageText) {
   } else {
     try {
       payload = JSON.parse(messageText);
-    } catch (e) {
+    } catch {
       return false;
     }
   }
 
   if (!payload || payload.type !== "TRADE_COMPLETE_REQUEST") {
-    console.log("[trade] 不是完成请求");
     return false;
   }
 
@@ -574,11 +590,15 @@ async function tryHandleTradeCompleteRequest(messageText) {
     return true;
   }
 
-  // 只缓存，不提示
-  window.__pendingPeerSig = peerSig;
-  alert("对方已请求完成交易，请你点击\"确认完成\"以继续交易");
+  // 按 trade_id + 对方身份公钥缓存，避免多会话串签名
+  if (!window.__pendingPeerSigMap) window.__pendingPeerSigMap = {};
+  const key = `${currentTradeId}:${peerSig.pubkey}`;
+  window.__pendingPeerSigMap[key] = peerSig;
+
+  alert('对方已请求完成交易，请你点击"确认完成"以继续交易');
   return true;
 }
+
 
 
 export async function verifyPeerSignature(body, hash, signature, peerPubKey) {
@@ -679,15 +699,17 @@ export async function signCompleteWithBody(body) {
 }
 
 // 提交双方签名完成交易
-export async function submitBothSignatures(tradeId, buyerSig, sellerSig) {
+export async function submitBothSignatures(tradeId, buyerSig, sellerSig, trade) {
   try {
-    // 验证双方签名和hash的一致性
     await verifyPeerSignature(buyerSig.body, buyerSig.hash, buyerSig.signature, buyerSig.pubkey);
     await verifyPeerSignature(sellerSig.body, sellerSig.hash, sellerSig.signature, sellerSig.pubkey);
-    
-    // 提交完成交易
-    await submitComplete(tradeId,  sellerSig, buyerSig);
-    
+
+    if (sellerSig.pubkey !== trade.seller_pubkey) {
+      throw new Error("卖家签名公钥不匹配交易卖家");
+    }
+
+    await submitComplete(tradeId, sellerSig, buyerSig);
+
     alert("交易完成请求已提交，交易状态将更新为已完成");
     location.reload();
   } catch (error) {
@@ -696,80 +718,86 @@ export async function submitBothSignatures(tradeId, buyerSig, sellerSig) {
   }
 }
 
+
+
 // 确认完成交易的统一入口
 export async function confirmCompleteTrade() {
   try {
     const tradeId = new URLSearchParams(location.search).get("trade_id");
-    if (!tradeId) {
-      throw new Error("缺少交易ID");
-    }
+    if (!tradeId) throw new Error("缺少交易ID");
 
-    // 获取当前交易信息和身份信息
     const trade = await getTrade(tradeId);
     const identity = await loadIdentityKeyPair();
-
     if (!trade || !identity) {
       alert("无法获取交易信息或身份信息，确认失败");
       return;
     }
 
-    // 检查聊天连接状态
     const currentSession = chat.getCurrentSession();
     if (!currentSession) {
       alert("请先选择聊天对象");
       return;
     }
 
-    if (!chat.isChatConnected()) {
+    if (!chat.isChatConnected || !chat.isChatConnected()) {
       alert("聊天连接尚未建立，请稍后再试");
       return;
     }
 
-    const pendingPeerSig = window.__pendingPeerSig;
+    const isSeller = identity.publicKey === trade.seller_pubkey;
+    if (!window.__pendingPeerSigMap) window.__pendingPeerSigMap = {};
 
-    //  如果没有对方请求，只发送自己的请求
+    let pendingPeerSig = null;
+    let pendingKey = null;
+
+    if (isSeller) {
+      const latestSig = getLatestPeerCompleteSigFromActiveSession();
+      if (latestSig?.pubkey) {
+        pendingKey = `${tradeId}:${latestSig.pubkey}`;
+        pendingPeerSig = window.__pendingPeerSigMap[pendingKey] || latestSig;
+      }
+    } else {
+      pendingKey = `${tradeId}:${trade.seller_pubkey}`;
+      pendingPeerSig = window.__pendingPeerSigMap[pendingKey] || null;
+    }
+
     if (!pendingPeerSig) {
       const signature = await signComplete(tradeId);
       const completeRequest = {
         type: "TRADE_COMPLETE_REQUEST",
         trade_id: tradeId,
-        signature: signature
+        signature,
       };
       await chat.sendMessage(JSON.stringify(completeRequest));
       alert("交易完成请求已发送，请等待对方确认");
       return;
     }
 
-    //  如果有对方请求，生成自己签名并提交
     const mySig = await signCompleteWithBody(pendingPeerSig.body);
 
     let buyerSig = null;
     let sellerSig = null;
 
-    if (pendingPeerSig.pubkey === trade.seller_pubkey) {
-      sellerSig = pendingPeerSig;
-      buyerSig = mySig;
-    } else if (pendingPeerSig.pubkey === trade.buyer_pubkey) {
-      buyerSig = pendingPeerSig;
-      sellerSig = mySig;
-    } else if (identity.publicKey === trade.seller_pubkey) {
+    if (isSeller) {
       sellerSig = mySig;
       buyerSig = pendingPeerSig;
-    } else if (identity.publicKey === trade.buyer_pubkey) {
-      buyerSig = mySig;
-      sellerSig = pendingPeerSig;
     } else {
-      throw new Error("无法确定买家/卖家签名归属");
+      buyerSig = mySig;
+      sellerSig = pendingPeerSig;
     }
 
-    await submitBothSignatures(tradeId, buyerSig, sellerSig);
-    window.__pendingPeerSig = null;
+    await submitBothSignatures(tradeId, buyerSig, sellerSig, trade);
 
+    if (pendingKey) {
+      delete window.__pendingPeerSigMap[pendingKey];
+    }
   } catch (error) {
     console.error("确认完成交易失败:", error);
     alert("确认完成交易失败: " + error.message);
   }
 }
+
+
 
 
 

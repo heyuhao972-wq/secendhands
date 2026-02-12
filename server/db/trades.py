@@ -1,4 +1,4 @@
-
+﻿
  # db/trades.py - 交易数据库操作模块
   
  #提供交易相关的数据库CRUD操作
@@ -16,19 +16,9 @@ logger = logging.getLogger(__name__)
 def insert_trade(trade: dict):
     """
     创建新交易记录
-    
-    在CREATE交易时调用，将交易信息插入到数据库中
-    
-    注意：根据项目设计，聊天密钥通过ECDH派生，不需要存储在数据库中。
-    如果数据库表中有seller_chat_pubkey或buyer_chat_pubkey字段，
-    应该将其设为可空或删除。
-    
-    @param trade: 交易信息字典
-    @raises Exception: 数据库操作失败时抛出异常
     """
     logger.info("开始插入新交易，交易ID: %s", trade.get("trade_id"))
-    
-    # SQL语句：插入交易记录
+
     sql = """
     INSERT INTO trades (
         trade_id,
@@ -59,17 +49,13 @@ def insert_trade(trade: dict):
             )
             logger.info("交易插入成功，交易ID: %s", trade.get("trade_id"))
         except Exception as e:
-            # 如果错误是因为缺少chat_pubkey字段，提供更明确的错误信息
             error_msg = str(e)
             if "seller_chat_pubkey" in error_msg or "buyer_chat_pubkey" in error_msg:
-                logger.error("数据库表结构错误：缺少chat_pubkey字段")
+                logger.error("数据库表结构错误：chat_pubkey 字段类型/约束异常")
                 raise Exception(
-                    f"数据库表结构错误：表中有chat_pubkey字段但代码未提供。"
-                    f"请运行fix_schema.sql修复表结构，或手动执行："
-                    f"ALTER TABLE trades MODIFY COLUMN seller_chat_pubkey TEXT NULL;"
-                    f"ALTER TABLE trades MODIFY COLUMN buyer_chat_pubkey TEXT NULL;"
+                    "数据库表结构错误：chat_pubkey 字段不兼容当前代码，请检查 trades 表字段定义"
                 ) from e
-            logger.error("交易插入失败: %s", str(e))
+            logger.error("交易插入失败: %s", error_msg)
             raise
 
 
@@ -141,11 +127,9 @@ def list_trades(limit: int = 50):
 def clear_trades():
     """
     清空交易表
-    
-    用于系统重建或测试环境清理
     """
     logger.warning("清空交易表")
-    
+
     sql = "DELETE FROM trades"
 
     with get_cursor() as cursor:
@@ -183,74 +167,99 @@ def update_trade_join(trade_id: str, buyer_pubkey: str, buyer_chat_pubkey: dict)
         logger.info("买家加入交易更新成功，影响行数: %s", cursor.rowcount)
 
 
-def update_trade_chat_pubkey(trade_id: str, identity_pubkey: str, chat_pubkey: str, is_seller: bool):
+def update_trade_chat_pubkey(
+    trade_id: str,
+    identity_pubkey: str,
+    chat_pubkey: str,
+    is_seller: bool
+):
     """
     更新交易的聊天公钥
-    
-    @param trade_id: 交易ID
-    @param identity_pubkey: 用户身份公钥（用于验证权限）
-    @param chat_pubkey: 聊天公钥
-    @param is_seller: 是否为卖家
     """
-    logger.info("更新交易聊天公钥，交易ID: %s, 用户角色: %s", trade_id, "卖家" if is_seller else "买家")
-    
+    logger.info(
+        "更新交易聊天公钥，交易ID: %s, 用户角色: %s",
+        trade_id,
+        "卖家" if is_seller else "买家",
+    )
+
     if is_seller:
         sql = """
-        UPDATE trades 
-        SET seller_chat_pubkey = %s 
+        UPDATE trades
+        SET seller_chat_pubkey = %s,
+            updated_at = NOW()
         WHERE trade_id = %s AND seller_pubkey = %s
         """
     else:
         sql = """
-        UPDATE trades 
-        SET buyer_chat_pubkey = %s 
-        WHERE trade_id = %s AND buyer_pubkey = %s
+        UPDATE trades
+        SET buyer_chat_pubkey = %s,
+            updated_at = NOW()
+        WHERE trade_id = %s
         """
-    
+
+    value = json.dumps({"pubkey": chat_pubkey})
+
     with get_cursor() as cursor:
-        cursor.execute(sql, (json.dumps({"pubkey": chat_pubkey}), trade_id, identity_pubkey))
+        if is_seller:
+            cursor.execute(sql, (value, trade_id, identity_pubkey))
+        else:
+            cursor.execute(sql, (value, trade_id))
         logger.info("聊天公钥更新成功，影响行数: %s", cursor.rowcount)
 
 def get_trade_with_chat_info(trade_id: str):
     """
     获取包含聊天信息的交易详情
-    
-    @param trade_id: 交易ID
-    @return: 包含聊天公钥的交易信息字典
     """
     logger.info("获取包含聊天信息的交易详情，交易ID: %s", trade_id)
-    
+
     sql = """
-    SELECT 
+    SELECT
         t.*,
-        COALESCE(t.seller_chat_pubkey, '{}') as seller_chat_pubkey,
-        COALESCE(t.buyer_chat_pubkey, '{}') as buyer_chat_pubkey
+        COALESCE(t.seller_chat_pubkey, '{}') AS seller_chat_pubkey,
+        COALESCE(t.buyer_chat_pubkey, '{}') AS buyer_chat_pubkey
     FROM trades t
     WHERE t.trade_id = %s
     """
-    
+
     with get_cursor() as cursor:
         cursor.execute(sql, (trade_id,))
         row = cursor.fetchone()
-        
+
     if not row:
         logger.info("未找到交易，交易ID: %s", trade_id)
         return None
-    
-    # 解析聊天公钥
-    seller_chat_pubkey = json.loads(row["seller_chat_pubkey"]) if row["seller_chat_pubkey"] else {}
-    buyer_chat_pubkey = json.loads(row["buyer_chat_pubkey"]) if row["buyer_chat_pubkey"] else {}
-    
+
+    def _parse_pubkey_field(v):
+        if not v:
+            return None
+        if isinstance(v, dict):
+            return v.get("pubkey")
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return None
+            if s.startswith("{"):
+                try:
+                    obj = json.loads(s)
+                    if isinstance(obj, dict):
+                        return obj.get("pubkey")
+                except Exception:
+                    return None
+            return s
+        return None
+
     result = {
         "trade_id": row["trade_id"],
         "seller_pubkey": row["seller_pubkey"],
-        "buyer_pubkey": row["buyer_pubkey"],
-        "seller_chat_pubkey": seller_chat_pubkey.get("pubkey"),
-        "buyer_chat_pubkey": buyer_chat_pubkey.get("pubkey"),
-        "content_hash": row["content_hash"],
-        "status": row["status"],
-        "created_at": row.get("created_at")
+        "buyer_pubkey": row.get("buyer_pubkey"),
+        "seller_chat_pubkey": _parse_pubkey_field(row.get("seller_chat_pubkey")),
+        "buyer_chat_pubkey": _parse_pubkey_field(row.get("buyer_chat_pubkey")),
+        "content_hash": row.get("content_hash"),
+        "description": row.get("description"),
+        "price": row.get("price"),
+        "status": row.get("status"),
+        "created_at": row.get("created_at"),
     }
-    
+
     logger.info("交易详情获取成功，包含聊天信息")
     return result

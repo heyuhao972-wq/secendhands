@@ -178,6 +178,7 @@ async def complete_trade(request: Request):
             complete_hash=data["hash"],
             seller_sig=data["sig_seller"],
             buyer_sig=data["sig_buyer"],
+            buyer_pubkey=data.get("buyer_pubkey"),
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
