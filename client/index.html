@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>二手书交易</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
-  <h1> 二！手！书！交！易！！！</h1>
+  <h1> 二手书交易平台</h1>
 
   <!-- 身份管理 -->
   <section>
@@ -22,31 +23,33 @@
   <hr />
 
   <!-- 交易列表 -->
-<section id="trade-section">
-  <h3>📦 交易列表</h3>
+  <section id="trade-section">
+    <h3> 交易列表</h3>
 
-  <ul id="trade-list" class="trade-list">
-    
-  </ul>
+    <ul id="trade-list" class="trade-list">
+    </ul>
 
-  <p id="trade-empty" style="display: none; color: #888;">
-    暂无交易
-  </p>
-</section>
+    <p id="trade-empty" style="display: none; color: #888;">
+      暂无交易
+    </p>
 
-<hr />
+    <div id="trade-pagination" style="display: flex; gap: 8px; align-items: center; margin-top: 12px;"></div>
+  </section>
 
-<button onclick="location.href='publish.html'">➕ 发布交易</button>
+  <hr />
+
+  <button onclick="location.href='publish.html'" style="width: 100%; font-size: 16px; padding: 16px;">
+    ➕ 发布新交易
+  </button>
 
   <!-- 模块加载 -->
-    <script type="module">
+  <script type="module">
     import * as trade from "./js/trade.js";
     import * as keymgr from "./js/keymgr.js";
 
     window.trade = trade;
     window.keymgr = keymgr;
 
-    // 初始化交易列表
     document.addEventListener('DOMContentLoaded', async () => {
       await trade.initIndexPage();
       

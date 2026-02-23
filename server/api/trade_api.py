@@ -1,6 +1,6 @@
 # backend/api/trade_api.py
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Query
 
 from services.trade_service import (
     verify_create,
@@ -11,7 +11,7 @@ from services.trade_service import (
     update_chat_pubkey,
     get_peer_chat_pubkey
 )
-from db.trades import get_trade, list_trades
+from db.trades import get_trade, list_trades, count_trades
 
 router = APIRouter(prefix="/trade")
 
@@ -21,11 +21,16 @@ router = APIRouter(prefix="/trade")
 
 
 @router.get("/list")
-async def get_trade_list():
+async def get_trade_list(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
     """
     获取交易列表
     """
-    trades = list_trades(limit=50)
+    total = count_trades()
+    offset = (page - 1) * page_size
+    trades = list_trades(limit=page_size, offset=offset)
     # 转换数据库格式为 API 格式
     result = []
     for trade in trades:
@@ -40,7 +45,16 @@ async def get_trade_list():
             "content_hash": trade.get("content_hash"),
             "created_at": trade.get("created_at").isoformat() if trade.get("created_at") else None,
         })
-    return {"data": result}
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    return {
+        "data": result,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+    }
 
 
 

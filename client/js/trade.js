@@ -204,20 +204,20 @@ export async function cancelTrade(tradeId) {
 import { loadTradeMeta } from "./trade_meta.js";
 
 export async function initIndexPage() {
-  let trades = await fetchTradeList();
-  // 调试日志：获取交易列表结果
-  console.log("[trade] 获取交易列表结果:", trades);
-
-
   const list = document.getElementById("trade-list");
   const empty = document.getElementById("trade-empty");
+  const pager = document.getElementById("trade-pagination");
+  const pageSize = 50;
+  const url = new URL(location.href);
+  const currentPage = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
 
   // 清空列表
   list.innerHTML = "";
+  if (pager) pager.innerHTML = "";
 
-
+  let response;
   try {
-    trades = await fetchTradeList();
+    response = await fetchTradeList(currentPage, pageSize);
   } catch (e) {
     console.error("fetchTradeList failed", e);
     empty.style.display = "block";
@@ -225,17 +225,12 @@ export async function initIndexPage() {
     return;
   }
 
-  
-
-  // 修复
-  if (trades && trades.data) {
-    trades = trades.data;
-  }
-
+  const trades = Array.isArray(response?.data) ? response.data : [];
 
   if (!Array.isArray(trades) || trades.length === 0) {
     empty.style.display = "block";
-    empty.textContent = "暂无交易";
+    empty.textContent = currentPage > 1 ? "该页暂无交易" : "暂无交易";
+    renderTradePagination(response, currentPage, pager);
     return;
   }
 
@@ -260,6 +255,43 @@ export async function initIndexPage() {
 
     list.appendChild(li);
   }
+
+  renderTradePagination(response, currentPage, pager);
+}
+
+function renderTradePagination(response, currentPage, pager) {
+  if (!pager) return;
+
+  const totalPages = Number(response?.total_pages || 0);
+  if (totalPages <= 1) {
+    pager.innerHTML = "";
+    return;
+  }
+
+  const prevBtn = document.createElement("button");
+  prevBtn.textContent = "上一页";
+  prevBtn.disabled = currentPage <= 1;
+  prevBtn.onclick = () => {
+    const url = new URL(location.href);
+    url.searchParams.set("page", String(currentPage - 1));
+    location.href = url.toString();
+  };
+
+  const nextBtn = document.createElement("button");
+  nextBtn.textContent = "下一页";
+  nextBtn.disabled = currentPage >= totalPages;
+  nextBtn.onclick = () => {
+    const url = new URL(location.href);
+    url.searchParams.set("page", String(currentPage + 1));
+    location.href = url.toString();
+  };
+
+  const info = document.createElement("span");
+  info.textContent = `第 ${currentPage} / ${totalPages} 页`;
+
+  pager.appendChild(prevBtn);
+  pager.appendChild(info);
+  pager.appendChild(nextBtn);
 }
 
 

@@ -102,26 +102,38 @@ def get_trade(trade_id: str):
         return result
 
 
-def list_trades(limit: int = 50):
+def list_trades(limit: int = 50, offset: int = 0):
     """
     获取交易列表
     
     @param limit: 返回的最大交易数量，默认50
+    @param offset: 偏移量
     @return: 交易列表
     """
-    logger.info("获取交易列表，限制: %s", limit)
+    logger.info("获取交易列表，限制: %s, 偏移: %s", limit, offset)
     
     sql = """
     SELECT * FROM trades
     ORDER BY created_at DESC
-    LIMIT %s
+    LIMIT %s OFFSET %s
     """
 
     with get_cursor() as cursor:
-        cursor.execute(sql, (limit,))
+        cursor.execute(sql, (limit, offset))
         result = cursor.fetchall()
         logger.info("交易列表获取成功，数量: %s", len(result))
         return result
+
+
+def count_trades() -> int:
+    """
+    获取交易总数
+    """
+    sql = "SELECT COUNT(*) AS total FROM trades"
+    with get_cursor() as cursor:
+        cursor.execute(sql)
+        row = cursor.fetchone() or {}
+        return int(row.get("total", 0))
 
 
 def clear_trades():

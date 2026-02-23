@@ -71,8 +71,8 @@ async function httpPost(path, body) {
  * 获取交易列表
  * GET /trade/list
  */
-export async function fetchTradeList() {
-  return httpGet("/trade/list");
+export async function fetchTradeList(page = 1, pageSize = 50) {
+  return httpGet(`/trade/list?page=${page}&page_size=${pageSize}`);
 }
 
 /**

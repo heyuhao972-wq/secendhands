@@ -2,56 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>交易详情</title>
   <link rel="stylesheet" href="css/style.css" />
-  <style>
-    .chat-message {
-      max-width: 75%;
-      margin: 6px 0;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid #d9d9d9;
-      color: #222;
-      line-height: 1.4;
-      word-break: break-word;
-    }
-
-    .own-message {
-      margin-left: auto;
-      background: #1677ff;
-      border-color: #1677ff;
-      color: #fff;
-    }
-
-    .other-message {
-      margin-right: auto;
-      background: #fff;
-      border-color: #d9d9d9;
-      color: #222;
-    }
-
-    .message-time {
-      display: block;
-      margin-top: 4px;
-      font-size: 12px;
-      opacity: 0.75;
-    }
-
-    .session-item.unread {
-      font-weight: 700;
-    }
-
-    .unread-badge {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      background: #ff4d4f;
-      color: #fff;
-      font-size: 12px;
-      line-height: 1.2;
-    }
-  </style>
 </head>
 <body>
 
@@ -65,56 +18,44 @@
   <hr />
 
   <!-- 聊天区 -->
-<section>
-  <h3>💬 聊天</h3>
+  <section>
+    <h3>💬 在线沟通</h3>
 
-  <div class="chat-layout">
+    <div class="chat-layout">
+      <!-- 左侧：会话列表 -->
+      <div id="chat-sessions" class="chat-sessions">
+        <!-- JS 动态插入 -->
+      </div>
 
-    <!-- 左侧：会话列表 -->
-    <div id="chat-sessions" class="chat-sessions">
-      <!-- JS 动态插入 -->
-    </div>
+      <!-- 右侧：当前聊天 -->
+      <div class="chat-window">
+        <div id="chat-messages" style="border:1px solid #ccc; height:200px; overflow:auto; padding:5px;">
+        </div>
 
-    <!-- 右侧：当前聊天 -->
-    <div class="chat-window">
-      <div
-        id="chat-messages"
-        style="border:1px solid #ccc; height:200px; overflow:auto; padding:5px;"
-      ></div>
-
-      <div class="chat-input-bar">
-        <input
-          id="chat-input"
-          placeholder="输入消息"
-          style="width:80%;"
-        />
-        <button id="send-btn">发送</button>
+        <div class="chat-input-bar">
+          <input id="chat-input" placeholder="输入消息..." />
+          <button id="send-btn">发送</button>
+        </div>
       </div>
     </div>
-
-  </div>
-</section>
-
-
+  </section>
 
   <hr />
 
   <!-- 操作按钮 -->
-<section>
-  <button id="completeBtn" onclick="trade.confirmCompleteTrade()">
-    ✅ 确认完成
-  </button>
+  <section style="display: flex; gap: 12px; justify-content: center;">
+    <button id="completeBtn" onclick="trade.confirmCompleteTrade()">
+      ✅ 确认完成
+    </button>
 
-  <button id="cancelBtn" onclick="trade.cancelCurrentTrade()">
-    ❌ 取消交易
-  </button>
-</section>
-
+    
+  </section>
 
   <br />
-  <button onclick="location.href='index.html'">⬅ 返回首页</button>
+  <button class="secondary" onclick="location.href='index.html'" style="width: 100%;">
+    ⬅ 返回首页
+  </button>
 
-  <!-- 模块加载 -->
   <script type="module">
     import * as trade from "./js/trade.js";
     import * as chat from "./js/chat.js";
@@ -122,7 +63,6 @@
     window.trade = trade;
     window.chat = chat;
     
-    // 直接调用初始化函数，确保在模块加载完成后执行
     trade.initTradePage();
   </script>
 

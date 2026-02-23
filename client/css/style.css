@@ -1,0 +1,487 @@
+/* ============================================
+   二手书交易平台 - 天蓝清新风格
+   ============================================ */
+
+:root {
+  --primary: #0ea5e9;        /* 天蓝色 */
+  --primary-dark: #0284c7;
+  --primary-light: #e0f2fe;
+  --secondary: #06b6d4;
+  --accent: #38bdf8;
+  --bg: #f0f9ff;             /* 极浅蓝背景 */
+  --card-bg: #ffffff;
+  --text: #0f172a;
+  --text-light: #64748b;
+  --border: #e2e8f0;
+  --shadow: 0 4px 20px rgba(14, 165, 233, 0.08);
+  --shadow-hover: 0 8px 30px rgba(14, 165, 233, 0.15);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(180deg, var(--bg) 0%, #ffffff 100%);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* 标题样式 */
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  text-align: center;
+  margin: 30px 0 25px;
+  position: relative;
+  padding-bottom: 15px;
+}
+
+h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 2px;
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 按钮基础样式 */
+button {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+}
+
+/* 主要按钮 - 所有按钮默认主色 */
+button {
+  background: var(--primary);
+  color: white;
+  padding: 10px 18px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+  margin: 4px;
+}
+
+button:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+}
+
+/* 次要按钮 - 通过位置或特定页面判断 */
+button[onclick*="history.back()"],
+button.secondary {
+  background: white;
+  color: var(--text);
+  border: 2px solid var(--border);
+  box-shadow: none;
+}
+
+button[onclick*="history.back()"]:hover,
+button.secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+  transform: translateY(-2px);
+}
+
+/* 危险按钮 */
+button[onclick*="cancelCurrentTrade"],
+button.danger {
+  background: #ef4444;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+button[onclick*="cancelCurrentTrade"]:hover,
+button.danger:hover {
+  background: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+/* 输入框 */
+input, textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  background: white;
+  margin: 8px 0;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+label {
+  display: block;
+  font-weight: 500;
+  color: var(--text-light);
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+/* 卡片容器 */
+section {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 20px 0;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+/* 交易列表区域 - 垂直布局 */
+#trade-section {
+  display: flex;
+  flex-direction: column;
+}
+
+#trade-section h3 {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--primary-light);
+}
+
+/* 交易列表样式 */
+.trade-list {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+}
+
+.trade-list li {
+  background: linear-gradient(135deg, #ffffff 0%, var(--primary-light) 100%);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.trade-list li::before {
+  content: '📚';
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  opacity: 0.2;
+}
+
+.trade-list li:hover {
+  border-color: var(--primary);
+  transform: translateX(8px);
+  box-shadow: var(--shadow-hover);
+}
+
+.trade-list li strong {
+  color: var(--primary-dark);
+  font-size: 16px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.trade-list li span {
+  color: var(--text-light);
+  font-size: 14px;
+}
+
+#trade-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
+  font-style: italic;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 2px dashed var(--border);
+}
+
+/* 分割线 */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 30px 0;
+}
+
+/* 发布表单 */
+div {
+  margin: 15px 0;
+}
+
+/* 交易详情页 */
+#trade-info {
+  background: linear-gradient(135deg, var(--primary-light) 0%, #ffffff 100%);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  border-left: 4px solid var(--primary);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+#trade-info strong {
+  color: var(--primary-dark);
+  font-size: 20px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* 聊天区域 - 修复：左边更窄 */
+.chat-layout {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  margin-top: 15px;
+}
+
+.chat-sessions {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+}
+
+.session-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  background: white;
+  border: 1px solid var(--border);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.session-item:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  transform: translateX(3px);
+}
+
+.session-item.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.chat-window {
+  background: white;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+#chat-messages {
+  height: 250px !important;
+  border: none !important;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  padding: 16px !important;
+  overflow-y: auto;
+}
+
+.chat-input-bar {
+  display: flex;
+  padding: 12px;
+  gap: 10px;
+  background: white;
+  border-top: 1px solid var(--border);
+}
+
+#chat-input {
+  flex: 1;
+  margin: 0;
+}
+
+#send-btn {
+  margin: 0;
+  padding: 12px 24px;
+}
+
+/* 聊天气泡 - 修复：根据内容自适应宽度 */
+.chat-message {
+  width: fit-content;
+  max-width: 85%;
+  min-width: 60px;
+  margin: 8px 0;
+  padding: 12px 16px;
+  border-radius: 18px;
+  line-height: 1.5;
+  font-size: 14px;
+  animation: fadeIn 0.3s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.own-message {
+  margin-left: auto;
+  background: var(--primary);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.other-message {
+  margin-right: auto;
+  background: white;
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+.message-time {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-top: 6px;
+  display: block;
+}
+
+/* 未读标记 */
+.unread-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.session-item.unread {
+  font-weight: 700;
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+/* 操作按钮组居中 */
+section:last-of-type {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 返回首页按钮 */
+button[onclick*="index.html"] {
+  background: var(--text-light);
+  margin-top: 10px;
+  width: 100%;
+}
+
+button[onclick*="index.html"]:hover {
+  background: var(--text);
+}
+
+/* 发布按钮全宽 */
+button[onclick*="publish.html"] {
+  width: 100%;
+  font-size: 16px;
+  padding: 16px;
+  margin: 0;
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+  body {
+    padding: 15px;
+  }
+  
+  h1 {
+    font-size: 24px;
+  }
+  
+  .chat-layout {
+    grid-template-columns: 100px 1fr;
+    gap: 12px;
+  }
+  
+  .chat-sessions {
+    max-height: 120px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    flex-direction: row;
+    padding: 8px;
+  }
+  
+  .session-item {
+    white-space: nowrap;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+  
+  section:first-of-type {
+    text-align: center;
+  }
+  
+  section:first-of-type button {
+    margin: 6px 4px;
+  }
+  
+  .chat-message {
+    max-width: 90%;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
+/* 加载动画 */
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(14, 165, 233, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

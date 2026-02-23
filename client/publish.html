@@ -2,33 +2,31 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>发布交易</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
-  <h1>➕ 发布二手书交易</h1>
+  <h1>➕ 发布二手书</h1>
 
-  <div>
-    <label>
-      书名：
-      <input id="desc" placeholder="例如：计算机网络（第七版）" />
-    </label>
-  </div>
+  <section>
+    <div>
+      <label> 书名</label>
+      <input id="desc" placeholder="请输入书名" />
+    </div>
 
-  <div>
-    <label>
-      价格：
-      <input id="price" placeholder="例如：30" />
-    </label>
-  </div>
+    <div>
+      <label> 价格（元）</label>
+      <input id="price" type="number" placeholder="例如：30" />
+    </div>
 
-  <br />
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button onclick="trade.publishTradeFromForm()" style="flex: 1;">✅ 确认发布</button>
+      <button class="secondary" onclick="history.back()" style="flex: 1;">❌ 取消</button>
+    </div>
+  </section>
 
-  <button onclick="trade.publishTradeFromForm()">发布</button>
-  <button onclick="history.back()">取消</button>
-
-  <!-- 模块加载 -->
   <script type="module">
     import * as trade from "./js/trade.js";
     window.trade = trade;

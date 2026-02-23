@@ -46,7 +46,7 @@ function normalizeChatPubKey(value) {
       const parsed = JSON.parse(key);
       if (parsed && parsed.pubkey) key = parsed.pubkey;
     } catch {
-      // Not JSON, keep raw string.
+      
     }
   } else if (typeof key === "object" && key.pubkey) {
     key = key.pubkey;
